@@ -56,6 +56,32 @@
             </property>
            </widget>
           </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_13">
+            <property name="text">
+             <string>Accelerator:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="acceleratorType">
+            <item>
+             <property name="text">
+              <string>TCG (default)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>KVM</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>HAXM</string>
+             </property>
+            </item>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>

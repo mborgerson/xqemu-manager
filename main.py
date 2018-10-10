@@ -33,6 +33,7 @@ class SettingsManager(object):
 			'dvd_path': '/path/to/disc.iso',
 			'short_anim': False,
 			'sys_memory': '64 MiB',
+			'accelerator': 'TCG (default)',
 			'extra_args': '',
 		}
 
@@ -95,6 +96,7 @@ class SettingsWindow(QDialog, settings_class):
 		bindFilePicker(self.setHddPath, self.hddPath)
 		bindCheckWidget(self.hddLocked, 'hdd_locked')
 		bindDropdownWidget(self.systemMemory, 'sys_memory')
+		bindDropdownWidget(self.acceleratorType, 'accelerator')
 		bindTextWidget(self.additionalArgs, 'extra_args')
 		updateLaunchCmd()
 
@@ -130,6 +132,9 @@ class Xqemu(object):
 		short_anim_arg = ',short_animation' if settings.settings['short_anim'] else ''
 		hdd_lock_arg = ',locked' if settings.settings['hdd_locked'] else ''
 		sys_memory = settings.settings['sys_memory'].split(' ')[0]+'M'
+		accelerator_arg = {'TCG (default)': ',accel=tcg',
+						   'KVM': ',accel=kvm,kernel_irqchip=off',
+						   'HAXM': ',accel=haxm'}[settings.settings['accelerator']]
 
 		dvd_path_arg = ''
 		if settings.settings['dvd_present']:
@@ -141,7 +146,7 @@ class Xqemu(object):
 		# Build qemu launch cmd
 		cmd = [xqemu_path,
 		       '-cpu','pentium3',
-		       '-machine','xbox,bootrom=%(mcpx_path)s%(short_anim_arg)s' % locals(),
+		       '-machine','xbox%(accelerator_arg)s,bootrom=%(mcpx_path)s%(short_anim_arg)s' % locals(),
 		       '-m', '%(sys_memory)s' % locals(),
 		       '-bios', '%(flash_path)s' % locals(),
 		       '-net','nic,model=nvnet',
