@@ -14,7 +14,6 @@ import subprocess
 import time
 import platform
 import sys
-print(sys.version)
 
 SETTINGS_FILE = './settings.json'
 
@@ -276,7 +275,7 @@ class Xqemu(object):
 
 		dvd_path_arg = ''
 		if mwindow.tableGames.currentRow() > 0:
-			selectedGame = settings.settings['iso_path'] + '/' + mwindow.tableGames.item(mwindow.tableGames.currentRow(), 0).text()
+			selectedGame = settings.settings['iso_path'] + '/' + mwindow.tableGames.item(mwindow.tableGames.currentRow(), 0).text().split('\n')[1]
 			check_path(selectedGame)
 			dvd_path_arg = ',file=' + escape_path(selectedGame)
 
