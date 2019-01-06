@@ -55,7 +55,7 @@ class SettingsManager(object):
 			'xmu_4b_path': '',
 			'extra_args': '',
 			'buildId': '',
-			'searchForUpdates': False,
+			'search_for_updates': False
 		}
 
 	def save(self):
@@ -142,7 +142,7 @@ class SettingsWindow(QDialog, settings_class):
 		bindCheckWidget(self.waitForGdb, 'gdb_wait')
 		bindTextWidget(self.gdbPort, 'gdb_port')
 		bindTextWidget(self.additionalArgs, 'extra_args')
-		bindCheckWidget(self.searchForUpdates, 'searchForUpdates')
+		bindCheckWidget(self.searchForUpdates, 'search_for_updates')
 		updateLaunchCmd()
 
 	def setSaveFileName(self, obj):
@@ -362,47 +362,52 @@ class MainWindow(QMainWindow, mainwindow_class):
 		self.actionExit.triggered.connect(self.onExitClicked)
 		self.actionSettings.triggered.connect(self.onSettingsClicked)
 
+		if not "search_for_updates" in self.settings.settings or not "buildId" in self.settings.settings:
+			self.settings.settings["search_for_updates"] = False
+			self.settings.settings["buildId"] = ""
+			self.settings.save()
 
-		if self.settings.settings["searchForUpdates"] == True:
-			if os.name == "nt":
-				projectJson = json.loads(requests.get("https://ci.appveyor.com/api/projects/mborgerson/xqemu-c5j6o/branch/master").text)
-				jobId = projectJson["build"]["jobs"][0]["jobId"]
-				print("Job ID: " + jobId)
+		if "search_for_updates" in self.settings.settings:
+			if self.settings.settings["search_for_updates"] == True:
+				if os.name == "nt":
+					projectJson = json.loads(requests.get("https://ci.appveyor.com/api/projects/mborgerson/xqemu-c5j6o/branch/master").text)
+					jobId = projectJson["build"]["jobs"][0]["jobId"]
+					print("Job ID: " + jobId)
 
-				if not jobId == self.settings.settings["buildId"]:
-					reply = QMessageBox.question(self, 'Update', "A new update is available, would you like to update?", QMessageBox.Yes, QMessageBox.No)
-					if reply == QMessageBox.Yes:
-						dir = os.path.dirname(os.path.abspath(self.settings.settings["xqemu_path"]))
-						print(dir)
-						if os.path.isdir(dir):
-							buildjobsJson = json.loads(requests.get("https://ci.appveyor.com/api/buildjobs/" + jobId + "/artifacts").text)
+					if not jobId == self.settings.settings["buildId"]:
+						reply = QMessageBox.question(self, 'Update', "A new update is available, would you like to update?", QMessageBox.Yes, QMessageBox.No)
+						if reply == QMessageBox.Yes:
+							dir = os.path.dirname(os.path.abspath(self.settings.settings["xqemu_path"]))
+							print(dir)
+							if os.path.isdir(dir):
+								buildjobsJson = json.loads(requests.get("https://ci.appveyor.com/api/buildjobs/" + jobId + "/artifacts").text)
 
-							fileName = buildjobsJson[0]["fileName"]
-							print("Filename: " + fileName)
+								fileName = buildjobsJson[0]["fileName"]
+								print("Filename: " + fileName)
 
-							binaryUrl = "https://ci.appveyor.com/api/buildjobs/" + jobId + "/artifacts/" + fileName
-							print("Downloading " + fileName + " from " + binaryUrl)
+								binaryUrl = "https://ci.appveyor.com/api/buildjobs/" + jobId + "/artifacts/" + fileName
+								print("Downloading " + fileName + " from " + binaryUrl)
 
-							with open(fileName, "wb") as file:
-								response = requests.get(binaryUrl)
-								file.write(response.content)
-							print("Downloaded")
+								with open(fileName, "wb") as file:
+									response = requests.get(binaryUrl)
+									file.write(response.content)
+								print("Downloaded")
 
-							self.settings.settings["buildId"] = jobId
+								self.settings.settings["buildId"] = jobId
 
-							print("Extracting...")
-							with zipfile.ZipFile(fileName, "r") as z:
-								z.extractall(dir)
+								print("Extracting...")
+								with zipfile.ZipFile(fileName, "r") as z:
+									z.extractall(dir)
 
-							os.remove(fileName)
-							print("Saving...")
-							self.settings.save()
+								os.remove(fileName)
+								print("Saving...")
+								self.settings.save()
 
-							QMessageBox.information(self, "Update", "The newest AppVeyor build has been downloaded and installed into XQEMU Directory.")
-						else:
-							QMessageBox.critical(self, "Update", "The selected XQEMU path doesn't exist.")
-			else:
-				QMessageBox.critical("This is a windows only feature.")
+								QMessageBox.information(self, "Update", "The newest AppVeyor build has been downloaded and installed into XQEMU Directory.")
+							else:
+								QMessageBox.critical(self, "Update", "The selected XQEMU path doesn't exist.")
+					else:
+						QMessageBox.critical("This is a windows only feature.")
 
 	def onRunButtonClicked(self):
 		if not self.inst.isRunning:
