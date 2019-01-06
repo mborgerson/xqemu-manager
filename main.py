@@ -389,23 +389,23 @@ class MainWindow(QMainWindow, mainwindow_class):
 		self.settings.load()
 		self.fileformats = [
 			{
-				'name': 'ISO9660 CD/DVD image file',
-				'offset': [
-					0x8001,
-					0x8801,
-					0x9001
-				],
-				'signature': [
-					'43 44 30 30 31'
-				]
-			},
-			{
 				'name': 'XISO',
 				'offset': [
 					0x10000
 				],
 				'signature': [
-					" ".join("{:02x}".format(ord(c)) for c in 'MICROSOFT*XBOX*MEDIA')
+					" ".join("{:02x}".format(ord(c)) for c in 'MICROSOFT*XBOX*MEDIA').upper()
+				]
+			},
+			{
+				'name': 'ISO9660 CD/DVD image file',
+				'offset': [
+					0x9001,
+					0x8801,
+					0x8001
+				],
+				'signature': [
+					'43 44 30 30 31'
 				]
 			}
 		]
