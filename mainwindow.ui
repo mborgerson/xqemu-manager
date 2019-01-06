@@ -1,111 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
-	<class>MainWindow</class>
-	<widget class="QMainWindow" name="MainWindow">
-		<property name="geometry">
-			<rect>
-				<x>0</x>
-				<y>0</y>
-				<width>540</width>
-				<height>293</height>
-			</rect>
-		</property>
-		<property name="windowTitle">
-			<string>XQEMU Manager</string>
-		</property>
-		<widget class="QWidget" name="centralwidget">
-			<layout class="QVBoxLayout" name="verticalLayout">
-				<item>
-					<widget class="QTableWidget" name="tableGames">
-						<property name="geometry">
-							<rect>
-								<x>25</x>
-								<y>5</y>
-								<width>531</width>
-								<height>288</height>
-							</rect>
-						</property>
-					</widget>
-				</item>
-			</layout>
-		</widget>
-		<widget class="QStatusBar" name="statusbar" />
-		<widget class="QMenuBar" name="menubar">
-			<property name="geometry">
-				<rect>
-					<x>0</x>
-					<y>0</y>
-					<width>540</width>
-					<height>22</height>
-				</rect>
-			</property>
-			<property name="defaultUp">
-				<bool>false</bool>
-			</property>
-			<property name="nativeMenuBar">
-				<bool>false</bool>
-			</property>
-			<widget class="QMenu" name="menuFile">
-				<property name="title">
-					<string>File</string>
-				</property>
-				<addaction name="actionExit" />
-			</widget>
-			<widget class="QMenu" name="menuEdit">
-				<property name="title">
-					<string>&amp;Edit</string>
-				</property>
-				<addaction name="actionSettings" />
-			</widget>
-			<widget class="QMenu" name="menuEmulator">
-				<property name="title">
-					<string>Em&amp;ulator</string>
-				</property>
-				<addaction name="actionRun" />
-				<addaction name="actionPause" />
-				<addaction name="actionRestart" />
-				<addaction name="actionScreenshot" />
-			</widget>
-			<addaction name="menuFile" />
-			<addaction name="menuEdit" />
-			<addaction name="menuEmulator" />
-		</widget>
-		<action name="actionRun">
-			<property name="text">
-				<string>&amp;Run</string>
-			</property>
-		</action>
-		<action name="actionPause">
-			<property name="text">
-				<string>&amp;Pause</string>
-			</property>
-		</action>
-		<action name="actionRestart">
-			<property name="text">
-				<string>Res&amp;tart</string>
-			</property>
-		</action>
-		<action name="actionScreenshot">
-			<property name="text">
-				<string>&amp;Screenshot</string>
-			</property>
-		</action>
-		<action name="actionExit">
-			<property name="text">
-				<string>E&amp;xit</string>
-			</property>
-		</action>
-		<action name="actionSettings">
-			<property name="text">
-				<string>&amp;Settings</string>
-			</property>
-		</action>
-		<action name="actionAbout">
-			<property name="text">
-				<string>&amp;About</string>
-			</property>
-		</action>
-	</widget>
-	<resources />
-	<connections />
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>540</width>
+    <height>293</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>XQEMU Manager</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QTableWidget" name="tableGames">
+      <property name="geometry">
+       <rect>
+        <x>25</x>
+        <y>5</y>
+        <width>531</width>
+        <height>288</height>
+       </rect>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusbar" />
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>540</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="defaultUp">
+    <bool>false</bool>
+   </property>
+   <property name="nativeMenuBar">
+    <bool>false</bool>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionExit" />
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>&amp;Edit</string>
+    </property>
+    <addaction name="actionSettings" />
+   </widget>
+   <widget class="QMenu" name="menuEmulator">
+    <property name="title">
+     <string>Em&amp;ulator</string>
+    </property>
+    <addaction name="actionRun" />
+    <addaction name="actionPause" />
+    <addaction name="actionRestart" />
+    <addaction name="actionScreenshot" />
+   </widget>
+   <addaction name="menuFile" />
+   <addaction name="menuEdit" />
+   <addaction name="menuEmulator" />
+  </widget>
+  <action name="actionRun">
+   <property name="text">
+    <string>&amp;Run</string>
+   </property>
+  </action>
+  <action name="actionPause">
+   <property name="text">
+    <string>&amp;Pause</string>
+   </property>
+  </action>
+  <action name="actionRestart">
+   <property name="text">
+    <string>Res&amp;tart</string>
+   </property>
+  </action>
+  <action name="actionScreenshot">
+   <property name="text">
+    <string>&amp;Screenshot</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>E&amp;xit</string>
+   </property>
+  </action>
+  <action name="actionSettings">
+   <property name="text">
+    <string>&amp;Settings</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>&amp;About</string>
+   </property>
+  </action>
+ </widget>
+ <resources />
+ <connections />
 </ui>

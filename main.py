@@ -22,8 +22,8 @@ settings_class, _ = loadUiType('settings.ui')
 mainwindow_class, _ = loadUiType('mainwindow.ui')
 
 def read_from_hex_offset(file, hex_offset):
-    file.seek(hex_offset)
-    return file.read(32)
+	file.seek(hex_offset)
+	return file.read(32)
 
 def getFormat(fileformats, settings, filename):
 	for element in fileformats:
