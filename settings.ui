@@ -146,7 +146,7 @@
        <item>
         <widget class="QCheckBox" name="searchForUpdates">
          <property name="text">
-          <string>Search for updates (Windows Only)</string>
+          <string>Search for updates (Windows only)</string>
          </property>
         </widget>
        </item>

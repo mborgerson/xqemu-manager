@@ -16,7 +16,6 @@ import requests
 import zipfile
 
 SETTINGS_FILE = './settings.json'
-settings = ""
 
 # Load UI files
 settings_class, _ = loadUiType('settings.ui')
@@ -54,7 +53,7 @@ class SettingsManager(object):
 			'xmu_4a_path': '',
 			'xmu_4b_path': '',
 			'extra_args': '',
-			'buildId': '',
+			'job_id': '',
 			'search_for_updates': False
 		}
 
@@ -362,9 +361,9 @@ class MainWindow(QMainWindow, mainwindow_class):
 		self.actionExit.triggered.connect(self.onExitClicked)
 		self.actionSettings.triggered.connect(self.onSettingsClicked)
 
-		if not "search_for_updates" in self.settings.settings or not "buildId" in self.settings.settings:
+		if not "search_for_updates" in self.settings.settings or not "job_id" in self.settings.settings:
 			self.settings.settings["search_for_updates"] = False
-			self.settings.settings["buildId"] = ""
+			self.settings.settings["job_id"] = ""
 			self.settings.save()
 
 		if "search_for_updates" in self.settings.settings:
@@ -372,17 +371,16 @@ class MainWindow(QMainWindow, mainwindow_class):
 				if os.name == "nt":
 					projectJson = json.loads(requests.get("https://ci.appveyor.com/api/projects/mborgerson/xqemu-c5j6o/branch/master").text)
 					jobId = projectJson["build"]["jobs"][0]["jobId"]
+					buildjobsJson = json.loads(requests.get("https://ci.appveyor.com/api/buildjobs/" + jobId + "/artifacts").text)
+					fileSize = str(buildjobsJson[0]["size"] / 1e+6)
 					print("Job ID: " + jobId)
 
-					if not jobId == self.settings.settings["buildId"]:
-						reply = QMessageBox.question(self, 'Update', "A new update is available, would you like to update?", QMessageBox.Yes, QMessageBox.No)
+					if not jobId == self.settings.settings["job_id"]:
+						reply = QMessageBox.question(self, 'Update', "A new update for XQEMU is available, would you like to update?\nThe size of the update is: " + fileSize + " MB", QMessageBox.Yes, QMessageBox.No)
 						if reply == QMessageBox.Yes:
 							dir = os.path.dirname(os.path.abspath(self.settings.settings["xqemu_path"]))
-							print(dir)
 							if os.path.isdir(dir):
-								buildjobsJson = json.loads(requests.get("https://ci.appveyor.com/api/buildjobs/" + jobId + "/artifacts").text)
-
-								fileName = buildjobsJson[0]["fileName"]
+								fileName = jobId + ".zip"
 								print("Filename: " + fileName)
 
 								binaryUrl = "https://ci.appveyor.com/api/buildjobs/" + jobId + "/artifacts/" + fileName
@@ -393,21 +391,21 @@ class MainWindow(QMainWindow, mainwindow_class):
 									file.write(response.content)
 								print("Downloaded")
 
-								self.settings.settings["buildId"] = jobId
+								self.settings.settings["job_id"] = jobId
 
 								print("Extracting...")
 								with zipfile.ZipFile(fileName, "r") as z:
 									z.extractall(dir)
 
-								os.remove(fileName)
+								#os.remove(fileName)
 								print("Saving...")
 								self.settings.save()
 
-								QMessageBox.information(self, "Update", "The newest AppVeyor build has been downloaded and installed into XQEMU Directory.")
+								QMessageBox.information(self, "Update", "The newest build has been downloaded and installed into XQEMU directory.")
 							else:
 								QMessageBox.critical(self, "Update", "The selected XQEMU path doesn't exist.")
 					else:
-						QMessageBox.critical("This is a windows only feature.")
+						QMessageBox.critical("This is a Windows-only feature.")
 
 	def onRunButtonClicked(self):
 		if not self.inst.isRunning:
