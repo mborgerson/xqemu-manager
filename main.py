@@ -13,6 +13,8 @@ import json
 import subprocess
 import time
 import platform
+import sys
+print(sys.version)
 
 SETTINGS_FILE = './settings.json'
 
@@ -28,7 +30,7 @@ def getFormat(fileformats, settings, filename):
 	for element in fileformats:
 		for offset in element['offset']:
 			file = open(settings.settings['iso_path'] + '/' + filename, 'rb')
-			hex_bytes = " ".join(['{:02X}'.format(byte) for byte in read_from_hex_offset(file, offset)])
+			hex_bytes = " ".join("{:02x}".format(ord(c)) for c in read_from_hex_offset(file, offset))
 			for signature in element["signature"]:
 				if signature == hex_bytes[0:len(signature)].upper():
 					return element['name']
