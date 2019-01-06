@@ -123,6 +123,9 @@ class SettingsWindow(QDialog, settings_class):
 		def bindFilePicker(button, text):
 			button.clicked.connect(lambda:self.setSaveFileName(text))
 
+		def bindDirectoryPicker(button, text):
+			button.clicked.connect(lambda:self.setDirectory(text))
+
 		def bindDropdownWidget(widget, var):
 			getDropdownAttr(widget, var)
 			widget.currentIndexChanged.connect(lambda:setDropdownAttr(widget, var))
@@ -132,7 +135,7 @@ class SettingsWindow(QDialog, settings_class):
 		bindFilePicker(self.setXqemuPath, self.xqemuPath)
 		bindCheckWidget(self.useShortBootAnim, 'short_anim')
 		bindTextWidget(self.isoPath, 'iso_path')
-		bindFilePicker(self.setIsoPath, self.isoPath)
+		bindDirectoryPicker(self.setIsoPath, self.isoPath)
 		bindTextWidget(self.mcpxPath, 'mcpx_path')
 		bindFilePicker(self.setMcpxPath, self.mcpxPath)
 		bindTextWidget(self.flashPath, 'flash_path')
@@ -169,6 +172,15 @@ class SettingsWindow(QDialog, settings_class):
 		updateLaunchCmd()
 
 	def setSaveFileName(self, obj):
+		options = QFileDialog.Options()
+		fileName, _ = QFileDialog.getOpenFileName(self,
+				"Select File",
+				obj.text(),
+				"All Files (*)", options=options)
+		if fileName:
+			obj.setText(fileName)
+
+	def setDirectory(self, obj):
 		options = QFileDialog.Options()
 		directory = QFileDialog.getExistingDirectory(self,
 				"Select ISO Directory",
@@ -261,7 +273,7 @@ class Xqemu(object):
 		accelerator_arg = Xqemu.generateAcceleratorArg(settings.settings['use_accelerator'])
 
 		dvd_path_arg = ''
-		if mwindow.tableGames.currentRow() != 0:
+		if mwindow.tableGames.currentRow() > 0:
 			selectedGame = settings.settings['iso_path'] + '/' + mwindow.tableGames.item(mwindow.tableGames.currentRow(), 0).text()
 			check_path(selectedGame)
 			dvd_path_arg = ',file=' + escape_path(selectedGame)
