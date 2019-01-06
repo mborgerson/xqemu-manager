@@ -31,7 +31,7 @@ def getFormat(fileformats, settings, filename):
 			file = open(settings.settings['iso_path'] + '/' + filename, 'rb')
 			hex_bytes = " ".join("{:02x}".format(ord(c)) for c in read_from_hex_offset(file, offset))
 			for signature in element["signature"]:
-				if signature == hex_bytes[0:len(signature)].upper():
+				if signature == hex_bytes.replace(' ', '').decode('hex')[0:len(signature)]:
 					return element['name']
 
 class SettingsManager(object):
@@ -394,7 +394,7 @@ class MainWindow(QMainWindow, mainwindow_class):
 					0x10000
 				],
 				'signature': [
-					" ".join("{:02x}".format(ord(c)) for c in 'MICROSOFT*XBOX*MEDIA').upper()
+					'MICROSOFT*XBOX*MEDIA'
 				]
 			},
 			{
@@ -405,7 +405,7 @@ class MainWindow(QMainWindow, mainwindow_class):
 					0x8001
 				],
 				'signature': [
-					'43 44 30 30 31'
+					'CD001'
 				]
 			}
 		]
