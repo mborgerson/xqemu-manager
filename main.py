@@ -2,10 +2,11 @@
 #
 # Simple manager prototype for xqemu
 #
-from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QMainWindow, QMessageBox, QTableWidgetItem, QAbstractItemView, QHeaderView
 from PyQt5.uic import loadUiType
 from PyQt5 import QtCore, QtGui
 from qmp import QEMUMonitorProtocol
+from glob import glob1
 import sys
 import os, os.path
 import json
@@ -18,6 +19,19 @@ SETTINGS_FILE = './settings.json'
 # Load UI files
 settings_class, _ = loadUiType('settings.ui')
 mainwindow_class, _ = loadUiType('mainwindow.ui')
+
+def read_from_hex_offset(file, hex_offset):
+    file.seek(hex_offset)
+    return file.read(32)
+
+def getFormat(fileformats, settings, filename):
+	for element in fileformats:
+		for offset in element['offset']:
+			file = open(settings.settings['iso_path'] + '/' + filename, 'rb')
+			hex_bytes = " ".join(['{:02X}'.format(byte) for byte in read_from_hex_offset(file, offset)])
+			for signature in element["signature"]:
+				if signature == hex_bytes[0:len(signature)].upper():
+					return element['name']
 
 class SettingsManager(object):
 	def __init__(self):
@@ -32,6 +46,7 @@ class SettingsManager(object):
 			'hdd_locked': True,
 			'dvd_present': True,
 			'dvd_path': '/path/to/disc.iso',
+			'iso_path': '/path/to/iso_folder',
 			'short_anim': False,
 			'sys_memory': '64 MiB',
 			'use_accelerator': False,
@@ -66,7 +81,7 @@ class SettingsManager(object):
 			self.reset()
 
 class SettingsWindow(QDialog, settings_class):
-	def __init__(self, settings, *args):
+	def __init__(self, settings, main, *args):
 		super(SettingsWindow, self).__init__(*args)
 		self.settings = settings
 		self.setupUi(self)
@@ -78,12 +93,27 @@ class SettingsWindow(QDialog, settings_class):
 		def getCheckAttr(widget, var): widget.setChecked(self.settings.settings[var])
 		def setDropdownAttr(widget, var): self.settings.settings[var] = widget.currentText()
 		def getDropdownAttr(widget, var): widget.setCurrentText(self.settings.settings[var])
-		def updateLaunchCmd(): self.invocationPreview.setPlainText(Xqemu.launchCmdToString(Xqemu.generateLaunchCmd(self.settings, True)))
+		def updateLaunchCmd(): self.invocationPreview.setPlainText(Xqemu.launchCmdToString(Xqemu.generateLaunchCmd(self.settings, main, True)))
+
+		def updateGameList():
+			files = glob1(self.settings.settings['iso_path'], "*.iso")
+			count = len(files)
+			main.tableGames.setRowCount(0)
+			main.tableGames.setRowCount(count + 1)
+			main.tableGames.setItem(0, 0, QTableWidgetItem('No disc in tray'))
+			current = 1
+			for	title in files:
+				main.tableGames.setItem(current, 0, QTableWidgetItem('Unknown title\n' + title))
+				main.tableGames.setItem(current, 1, QTableWidgetItem(getFormat(main.fileformats, self.settings, title)))
+				current += 1
+
+			main.tableGames.resizeRowsToContents()
 
 		def bindTextWidget(widget, var):
 			getTextAttr(widget, var)
 			widget.textChanged.connect(lambda:setTextAttr(widget, var))
 			widget.textChanged.connect(updateLaunchCmd)
+			widget.textChanged.connect(updateGameList)
 
 		def bindCheckWidget(widget, var):
 			getCheckAttr(widget, var)
@@ -101,9 +131,8 @@ class SettingsWindow(QDialog, settings_class):
 		bindTextWidget(self.xqemuPath, 'xqemu_path')
 		bindFilePicker(self.setXqemuPath, self.xqemuPath)
 		bindCheckWidget(self.useShortBootAnim, 'short_anim')
-		bindCheckWidget(self.dvdPresent, 'dvd_present')
-		bindTextWidget(self.dvdPath, 'dvd_path')
-		bindFilePicker(self.setDvdPath, self.dvdPath)
+		bindTextWidget(self.isoPath, 'iso_path')
+		bindFilePicker(self.setIsoPath, self.isoPath)
 		bindTextWidget(self.mcpxPath, 'mcpx_path')
 		bindFilePicker(self.setMcpxPath, self.mcpxPath)
 		bindTextWidget(self.flashPath, 'flash_path')
@@ -141,12 +170,12 @@ class SettingsWindow(QDialog, settings_class):
 
 	def setSaveFileName(self, obj):
 		options = QFileDialog.Options()
-		fileName, _ = QFileDialog.getOpenFileName(self,
-				"Select File",
+		directory = QFileDialog.getExistingDirectory(self,
+				"Select ISO Directory",
 				obj.text(),
-				"All Files (*)", options=options)
-		if fileName:
-			obj.setText(fileName)
+				options=options)
+		if directory:
+			obj.setText(directory)
 
 class Xqemu(object):
 	def __init__(self):
@@ -206,7 +235,7 @@ class Xqemu(object):
 		return args
 
 	@staticmethod
-	def generateLaunchCmd(settings, skipPathChecks=False):
+	def generateLaunchCmd(settings, mwindow, skipPathChecks=False):
 		def check_path(path):
 			if not skipPathChecks:
 				if not os.path.exists(path) or os.path.isdir(path):
@@ -232,9 +261,10 @@ class Xqemu(object):
 		accelerator_arg = Xqemu.generateAcceleratorArg(settings.settings['use_accelerator'])
 
 		dvd_path_arg = ''
-		if settings.settings['dvd_present']:
-			check_path(settings.settings['dvd_path'])
-			dvd_path_arg = ',file=' + escape_path(settings.settings['dvd_path'])
+		if mwindow.tableGames.currentRow() != 0:
+			selectedGame = settings.settings['iso_path'] + '/' + mwindow.tableGames.item(mwindow.tableGames.currentRow(), 0).text()
+			check_path(selectedGame)
+			dvd_path_arg = ',file=' + escape_path(selectedGame)
 
 		extra_args = [x for x in settings.settings['extra_args'].split(' ') if x is not '']
 
@@ -274,8 +304,8 @@ class Xqemu(object):
 
 		return ' '.join(cmd_escaped)
 
-	def start(self, settings):
-		cmd = self.generateLaunchCmd(settings)
+	def start(self, settings, mwindow):
+		cmd = self.generateLaunchCmd(settings, mwindow)
 
 		print('Running: %s' % self.launchCmdToString(cmd))
 
@@ -287,7 +317,7 @@ class Xqemu(object):
 			try:
 				self._qmp = QEMUMonitorProtocol(('localhost', 4444))
 				self._qmp.connect()
-			except Exception as e:
+			except:
 				if i > 4:
 					raise
 				else:
@@ -344,53 +374,95 @@ class MainWindow(QMainWindow, mainwindow_class):
 		self.inst = Xqemu()
 		self.settings = SettingsManager()
 		self.settings.load()
-		self.runButton.setText('Start')
-		self.pauseButton.setText('Pause')
-		self.screenshotButton.setText('Screenshot')
+		self.fileformats = [
+			{
+				'name': 'ISO9660 CD/DVD image file',
+				'offset': [
+					0x8001,
+					0x8801,
+					0x9001
+				],
+				'signature': [
+					'43 44 30 30 31'
+				]
+			},
+			{
+				'name': 'XISO',
+				'offset': [
+					0x10000
+				],
+				'signature': [
+					" ".join("{:02x}".format(ord(c)) for c in 'MICROSOFT*XBOX*MEDIA')
+				]
+			}
+		]
+
+		# Disable resizing because it doesnt really do anything
+		self.setFixedSize(540, 293)
 
 		# Connect signals
-		self.runButton.clicked.connect(self.onRunButtonClicked)
-		self.pauseButton.clicked.connect(self.onPauseButtonClicked)
-		self.screenshotButton.clicked.connect(self.onScreenshotButtonClicked)
-		self.restartButton.clicked.connect(self.onRestartButtonClicked)
+		self.actionRun.triggered.connect(self.onRunClicked)
+		self.actionPause.triggered.connect(self.onPauseClicked)
+		self.actionScreenshot.triggered.connect(self.onScreenshotClicked)
+		self.actionRestart.triggered.connect(self.onRestartClicked)
 		self.actionExit.triggered.connect(self.onExitClicked)
 		self.actionSettings.triggered.connect(self.onSettingsClicked)
+		
+		#Setup Games list
+		files = glob1(self.settings.settings['iso_path'], "*.iso")
+		count = len(files)
+		self.tableGames.setRowCount(count + 1)
+		self.tableGames.setColumnCount(2)
+		self.tableGames.setColumnWidth(0, 354)
+		self.tableGames.setColumnWidth(1, 177)
+		self.tableGames.verticalHeader().setVisible(False)
+		self.tableGames.horizontalHeader().setVisible(False)
+		self.tableGames.setSelectionBehavior(QAbstractItemView.SelectItems)
+		self.tableGames.setSelectionMode(QAbstractItemView.SingleSelection)
+		self.tableGames.setItem(0, 0, QTableWidgetItem('No disc in tray'))
+		current = 1
+		for	title in files:
+			self.tableGames.setItem(current, 0, QTableWidgetItem('Unknown title\n' + title))
+			self.tableGames.setItem(current, 1, QTableWidgetItem(getFormat(self.fileformats, self.settings, title)))
+			current += 1
 
-	def onRunButtonClicked(self):
+		self.tableGames.resizeRowsToContents()
+
+	def onRunClicked(self):
 		if not self.inst.isRunning:
 			# No active instance
 			try:
-				self.inst.start(self.settings)
-				self.runButton.setText('Stop')
+				self.inst.start(self.settings, self)
+				self.actionRun.setText('Stop')
 			except Exception as e:
 				QMessageBox.critical(self, 'Error!', str(e))
 		else:
 			# Instance exists
 			self.inst.stop()
-			self.runButton.setText('Start')
+			self.actionRun.setText('Run')
 
-	def onPauseButtonClicked(self):
+	def onPauseClicked(self):
 		if not self.inst.isRunning: return
 
 		# We should probably actually pull from event queue to reflect state
-		# here instead of querying during the button press
+		# here instead of querying during the menu item press
 		if self.inst.isPaused():
 			self.inst.cont()
-			self.pauseButton.setText('Pause')
+			self.actionPause.setText('Pause')
 		else:
 			self.inst.pause()
-			self.pauseButton.setText('Continue')
+			self.actionPause.setText('Continue')
 
-	def onScreenshotButtonClicked(self):
+	def onScreenshotClicked(self):
 		if not self.inst.isRunning: return
 		self.inst.screenshot()
 
-	def onRestartButtonClicked(self):
+	def onRestartClicked(self):
 		if not self.inst.isRunning: return
 		self.inst.restart()
 
 	def onSettingsClicked(self):
-		s = SettingsWindow(self.settings)
+		s = SettingsWindow(self.settings, self)
 		s.exec_()
 		self.settings.save()
 
