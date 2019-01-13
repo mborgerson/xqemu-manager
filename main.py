@@ -2,22 +2,89 @@
 #
 # Simple manager prototype for xqemu
 #
-from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QMainWindow, QMessageBox, QTableWidgetItem, QAbstractItemView, QHeaderView
 from PyQt5.uic import loadUiType
 from PyQt5 import QtCore, QtGui
 from qmp import QEMUMonitorProtocol
+from glob import glob1
 import sys
 import os, os.path
 import json
 import subprocess
 import time
 import platform
+import csv
+import sys
 
 SETTINGS_FILE = './settings.json'
+LIBRARY_CACHE = './library.cache'
 
 # Load UI files
 settings_class, _ = loadUiType('settings.ui')
 mainwindow_class, _ = loadUiType('mainwindow.ui')
+
+class DiscImageFormat(object):
+	XISO = 'XISO'
+	ISO9660 = 'ISO9660'
+	Unknown = 'Unknown format'
+
+def read_from_offset(file, offset, length):
+	file.seek(offset)
+	return file.read(length).decode('unicode-escape')
+
+def getDiscFileFormat(filepath):
+	file = open(filepath, 'rb')
+
+	#XISO/XGD
+	if read_from_offset(file, 0x10000, 20) == 'MICROSOFT*XBOX*MEDIA': return DiscImageFormat.XISO
+
+	# ISO 9660
+	for offset in [0x9001, 0x8801, 0x8001]:
+		if read_from_offset(file, offset, 5) == 'CD001': return DiscImageFormat.ISO9660
+
+	return DiscImageFormat.Unknown
+
+class CacheManager(object):
+	def __init__(self):
+		self.reset()
+
+	def reset(self):
+		self.cache = []
+
+	def save(self):
+		# Some python version stuff to get rid of empty lines in the cache
+		if sys.version_info[0] == 3:
+			cachefile = open(LIBRARY_CACHE, 'w', newline='')
+		else:
+			cachefile = open(LIBRARY_CACHE, 'wb')
+
+		with cachefile as csvfile:
+			cachewriter = csv.writer(csvfile)
+			for entry in self.cache:
+				cachewriter.writerow(entry)
+
+	def load(self):
+		if os.path.exists(LIBRARY_CACHE):
+			with open(LIBRARY_CACHE, 'r') as csvfile:
+				cachereader = csv.reader(csvfile, delimiter=',', quotechar='"')
+				for row in cachereader:
+					self.cache.append(row)
+		else:
+			self.reset()
+
+	def checkExisting(self, path):
+		baseName = os.path.basename(path)
+		filename, _ = os.path.splitext(baseName)
+		lastmodtime = os.path.getmtime(path)
+		size = os.path.getsize(path)
+		for entry in self.cache:
+			if len(entry) != 4: continue
+			if entry[0] == filename and entry[1] == str(round(lastmodtime, 0)) and entry[2] == str(size):
+				return entry[3]
+		return ''
+
+	def add(self, item):
+		self.cache.append(item)
 
 class SettingsManager(object):
 	def __init__(self):
@@ -31,7 +98,7 @@ class SettingsManager(object):
 			'hdd_path': '/path/to/hdd.img',
 			'hdd_locked': True,
 			'dvd_present': True,
-			'dvd_path': '/path/to/disc.iso',
+			'dvd_folder_path': '/path/to/disc/folder',
 			'short_anim': False,
 			'sys_memory': '64 MiB',
 			'use_accelerator': False,
@@ -66,7 +133,7 @@ class SettingsManager(object):
 			self.reset()
 
 class SettingsWindow(QDialog, settings_class):
-	def __init__(self, settings, *args):
+	def __init__(self, settings, main, *args):
 		super(SettingsWindow, self).__init__(*args)
 		self.settings = settings
 		self.setupUi(self)
@@ -78,12 +145,14 @@ class SettingsWindow(QDialog, settings_class):
 		def getCheckAttr(widget, var): widget.setChecked(self.settings.settings[var])
 		def setDropdownAttr(widget, var): self.settings.settings[var] = widget.currentText()
 		def getDropdownAttr(widget, var): widget.setCurrentText(self.settings.settings[var])
-		def updateLaunchCmd(): self.invocationPreview.setPlainText(Xqemu.launchCmdToString(Xqemu.generateLaunchCmd(self.settings, True)))
+		def updateLaunchCmd(): self.invocationPreview.setPlainText(Xqemu.launchCmdToString(Xqemu.generateLaunchCmd(self.settings, main, True)))
+		def updateGameList(): main.populateLibrary(self.settings.settings['dvd_folder_path'])
 
 		def bindTextWidget(widget, var):
 			getTextAttr(widget, var)
 			widget.textChanged.connect(lambda:setTextAttr(widget, var))
 			widget.textChanged.connect(updateLaunchCmd)
+			widget.textChanged.connect(updateGameList)
 
 		def bindCheckWidget(widget, var):
 			getCheckAttr(widget, var)
@@ -93,6 +162,9 @@ class SettingsWindow(QDialog, settings_class):
 		def bindFilePicker(button, text):
 			button.clicked.connect(lambda:self.setSaveFileName(text))
 
+		def bindDirectoryPicker(button, text):
+			button.clicked.connect(lambda:self.setDirectory(text))
+
 		def bindDropdownWidget(widget, var):
 			getDropdownAttr(widget, var)
 			widget.currentIndexChanged.connect(lambda:setDropdownAttr(widget, var))
@@ -101,9 +173,8 @@ class SettingsWindow(QDialog, settings_class):
 		bindTextWidget(self.xqemuPath, 'xqemu_path')
 		bindFilePicker(self.setXqemuPath, self.xqemuPath)
 		bindCheckWidget(self.useShortBootAnim, 'short_anim')
-		bindCheckWidget(self.dvdPresent, 'dvd_present')
-		bindTextWidget(self.dvdPath, 'dvd_path')
-		bindFilePicker(self.setDvdPath, self.dvdPath)
+		bindTextWidget(self.dvdPath, 'dvd_folder_path')
+		bindDirectoryPicker(self.setDVDPath, self.dvdPath)
 		bindTextWidget(self.mcpxPath, 'mcpx_path')
 		bindFilePicker(self.setMcpxPath, self.mcpxPath)
 		bindTextWidget(self.flashPath, 'flash_path')
@@ -147,6 +218,15 @@ class SettingsWindow(QDialog, settings_class):
 				"All Files (*)", options=options)
 		if fileName:
 			obj.setText(fileName)
+
+	def setDirectory(self, obj):
+		options = QFileDialog.Options()
+		directory = QFileDialog.getExistingDirectory(self,
+				"Select DVD Directory",
+				obj.text(),
+				options=options)
+		if directory:
+			obj.setText(directory)
 
 class Xqemu(object):
 	def __init__(self):
@@ -193,7 +273,7 @@ class Xqemu(object):
 
 		def genArg(settings, name, port):
 			port_arr = ['controller_three', 'controller_four', 'controller_one', 'controller_two']
-			if settings.settings[name] is not '' and settings.settings[port_arr[int(port[:1]) - 1]] != 'Not connected':
+			if settings.settings[name] != '' and settings.settings[port_arr[int(port[:1]) - 1]] != 'Not connected':
 				check_path(settings.settings[name])
 				return ['-drive', 'if=none,id=' + name + ',file=' + escape_path(settings.settings[name]),
 						'-device', 'usb-storage,drive=' + name + ',port=' + port]
@@ -206,7 +286,7 @@ class Xqemu(object):
 		return args
 
 	@staticmethod
-	def generateLaunchCmd(settings, skipPathChecks=False):
+	def generateLaunchCmd(settings, main, skipPathChecks=False):
 		def check_path(path):
 			if not skipPathChecks:
 				if not os.path.exists(path) or os.path.isdir(path):
@@ -232,9 +312,10 @@ class Xqemu(object):
 		accelerator_arg = Xqemu.generateAcceleratorArg(settings.settings['use_accelerator'])
 
 		dvd_path_arg = ''
-		if settings.settings['dvd_present']:
-			check_path(settings.settings['dvd_path'])
-			dvd_path_arg = ',file=' + escape_path(settings.settings['dvd_path'])
+		if main.tableGames.currentRow() > 0:
+			selectedGame = main.gamesCache[main.tableGames.currentRow() - 1]
+			check_path(selectedGame)
+			dvd_path_arg = ',file=' + escape_path(selectedGame)
 
 		extra_args = [x for x in settings.settings['extra_args'].split(' ') if x is not '']
 
@@ -274,8 +355,8 @@ class Xqemu(object):
 
 		return ' '.join(cmd_escaped)
 
-	def start(self, settings):
-		cmd = self.generateLaunchCmd(settings)
+	def start(self, settings, main):
+		cmd = self.generateLaunchCmd(settings, main)
 
 		print('Running: %s' % self.launchCmdToString(cmd))
 
@@ -287,7 +368,7 @@ class Xqemu(object):
 			try:
 				self._qmp = QEMUMonitorProtocol(('localhost', 4444))
 				self._qmp.connect()
-			except Exception as e:
+			except:
 				if i > 4:
 					raise
 				else:
@@ -344,9 +425,12 @@ class MainWindow(QMainWindow, mainwindow_class):
 		self.inst = Xqemu()
 		self.settings = SettingsManager()
 		self.settings.load()
-		self.runButton.setText('Start')
-		self.pauseButton.setText('Pause')
-		self.screenshotButton.setText('Screenshot')
+		self.libraryCache = CacheManager()
+		self.libraryCache.load()
+		self.gamesCache = []
+
+		# Disable resizing because it doesnt really do anything
+		self.setFixedSize(540, 293)
 
 		# Connect signals
 		self.runButton.clicked.connect(self.onRunButtonClicked)
@@ -355,12 +439,31 @@ class MainWindow(QMainWindow, mainwindow_class):
 		self.restartButton.clicked.connect(self.onRestartButtonClicked)
 		self.actionExit.triggered.connect(self.onExitClicked)
 		self.actionSettings.triggered.connect(self.onSettingsClicked)
+		
+		#Setup Games list
+		self.tableGames.setRowCount(0)
+		self.tableGames.setColumnCount(4)
+		self.tableGames.setColumnWidth(0, 85)
+		self.tableGames.setColumnWidth(1, 177)
+		self.tableGames.setColumnWidth(2, 177)
+		self.tableGames.setColumnWidth(3, 67)
+		self.tableGames.verticalHeader().setVisible(False)
+		self.tableGames.horizontalHeader().setVisible(False)
+		self.tableGames.setShowGrid(False)
+		self.tableGames.setAlternatingRowColors(True)
+		self.tableGames.setStyleSheet("QTableWidget { alternate-background-color: #5E5E5E; background-color: #404040; }"
+			+ "QTableWidget::item:selected { background: #5b9aff; }")
+		self.tableGames.setEditTriggers(QAbstractItemView.NoEditTriggers)
+		self.tableGames.setSelectionBehavior(QAbstractItemView.SelectRows)
+		self.tableGames.setSelectionMode(QAbstractItemView.SingleSelection)
+		self.populateLibrary(self.settings.settings['dvd_folder_path'])
+		self.libraryCache.save()
 
 	def onRunButtonClicked(self):
 		if not self.inst.isRunning:
 			# No active instance
 			try:
-				self.inst.start(self.settings)
+				self.inst.start(self.settings, self)
 				self.runButton.setText('Stop')
 			except Exception as e:
 				QMessageBox.critical(self, 'Error!', str(e))
@@ -390,13 +493,45 @@ class MainWindow(QMainWindow, mainwindow_class):
 		self.inst.restart()
 
 	def onSettingsClicked(self):
-		s = SettingsWindow(self.settings)
+		s = SettingsWindow(self.settings, self)
 		s.exec_()
 		self.settings.save()
 
 	def onExitClicked(self):
 		self.inst.stop()
+		self.libraryCache.save()
 		sys.exit(0)
+	
+	def cacheFile(self, path):
+		fileformat = getDiscFileFormat(path)
+		baseName = os.path.basename(path)
+		filename, _ = os.path.splitext(baseName)
+		lastmodtime = os.path.getmtime(path)
+		size = os.path.getsize(path)
+
+		self.libraryCache.add([filename, round(lastmodtime, 0), size, fileformat])
+		return fileformat
+
+	def populateLibrary(self, path):
+		files = glob1(path, "*.iso")
+		count = len(files)
+		self.tableGames.setRowCount(count + 1)
+		self.tableGames.setColumnCount(4)
+		self.tableGames.setItem(0, 1, QTableWidgetItem('No disc in tray'))
+		current = 1
+		for	title in files:
+			filepath = self.settings.settings['dvd_folder_path'] + '/' + title
+			cached = self.libraryCache.checkExisting(filepath)
+			# This should fetch pmuch all infos from cache if possible
+			if len(cached) != 0:
+				self.tableGames.setItem(current, 3, QTableWidgetItem(cached))
+				self.gamesCache.append(filepath)
+			else:
+				self.tableGames.setItem(current, 3, QTableWidgetItem(self.cacheFile(filepath)))
+			self.tableGames.setItem(current, 1, QTableWidgetItem(title))
+			current += 1
+		self.tableGames.resizeRowsToContents()
+		self.tableGames.selectRow(0)
 
 def main():
 	app = QApplication(sys.argv)

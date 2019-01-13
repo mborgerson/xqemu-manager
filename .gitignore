@@ -1,5 +1,9 @@
+#Files
 *.pyc
 settings.json
 *.ppm
-__pycache__/
+library.cache
 .DS_Store
+
+#Folders
+__pycache__/
