@@ -342,6 +342,50 @@ class Xqemu(object):
 	def isRunning(self):
 		return self._p is not None # FIXME: Check subproc state
 
+class AppVeyor(object):
+	def __init__(self, repo, branch, user):
+		self.gjson = json.loads(requests.get("https://ci.appveyor.com/api/projects/" + user + "/" + repo + "/branch/" + branch).text)
+
+	def GetJobs(self):
+		return self.gjson["build"]["jobs"]
+
+	def GetRelease(self, id):
+		idjson = json.loads(requests.get("https://ci.appveyor.com/api/buildjobs/" + str(id) + "/artifacts").text)
+		return idjson
+
+class Updater(object):
+    def __init__(self, settings):
+        self.gsettings = settings
+        appveyor = AppVeyor("xqemu", "master", "xqemu-bot")
+        self.jobs = appveyor.GetJobs()
+        self.release = appveyor.GetRelease(self.jobs[0]["jobId"])
+
+    def update(self):
+        dir = os.path.dirname(os.path.abspath(self.gsettings.settings["xqemu_path"]))
+        if os.path.isdir(dir):
+            fileName = "xqemu.zip"
+            print("Filename: " + fileName)
+
+            binaryUrl = "https://ci.appveyor.com/api/buildjobs/" + self.jobs[0]["jobId"] + "/artifacts/" + fileName
+            print("Downloading " + fileName + " from " + binaryUrl)
+
+            with open(dir + "/" + self.jobs[0]["jobId"] + ".zip", "wb") as file:
+                response = requests.get(binaryUrl)
+                file.write(response.content)
+
+            print("Downloaded")
+
+            self.gsettings.settings["job_id"] = self.jobs[0]["jobId"]
+
+            print("Extracting...")
+            with zipfile.ZipFile(dir + "/" + self.jobs[0]["jobId"] + ".zip", "r") as z:
+                z.extractall(dir)
+
+            print("Saving...")
+            self.gsettings.save()
+        else:
+            QMessageBox.critical(self, "Update", "The selected XQEMU path doesn't exist.")
+
 class MainWindow(QMainWindow, mainwindow_class):
 	def __init__(self, *args):
 		super(MainWindow, self).__init__(*args)
@@ -366,46 +410,19 @@ class MainWindow(QMainWindow, mainwindow_class):
 			self.settings.settings["job_id"] = ""
 			self.settings.save()
 
-		if "search_for_updates" in self.settings.settings:
-			if self.settings.settings["search_for_updates"] == True:
-				if os.name == "nt":
-					projectJson = json.loads(requests.get("https://ci.appveyor.com/api/projects/mborgerson/xqemu-c5j6o/branch/master").text)
-					jobId = projectJson["build"]["jobs"][0]["jobId"]
-					buildjobsJson = json.loads(requests.get("https://ci.appveyor.com/api/buildjobs/" + jobId + "/artifacts").text)
-					fileSize = str(buildjobsJson[0]["size"] / 1e+6)
-					print("Job ID: " + jobId)
-
-					if not jobId == self.settings.settings["job_id"]:
-						reply = QMessageBox.question(self, 'Update', "A new update for XQEMU is available, would you like to update?\nThe size of the update is: " + fileSize + " MB", QMessageBox.Yes, QMessageBox.No)
-						if reply == QMessageBox.Yes:
-							dir = os.path.dirname(os.path.abspath(self.settings.settings["xqemu_path"]))
-							if os.path.isdir(dir):
-								fileName = jobId + ".zip"
-								print("Filename: " + fileName)
-
-								binaryUrl = "https://ci.appveyor.com/api/buildjobs/" + jobId + "/artifacts/" + fileName
-								print("Downloading " + fileName + " from " + binaryUrl)
-
-								with open(fileName, "wb") as file:
-									response = requests.get(binaryUrl)
-									file.write(response.content)
-								print("Downloaded")
-
-								self.settings.settings["job_id"] = jobId
-
-								print("Extracting...")
-								with zipfile.ZipFile(fileName, "r") as z:
-									z.extractall(dir)
-
-								#os.remove(fileName)
-								print("Saving...")
-								self.settings.save()
-
-								QMessageBox.information(self, "Update", "The newest build has been downloaded and installed into XQEMU directory.")
-							else:
-								QMessageBox.critical(self, "Update", "The selected XQEMU path doesn't exist.")
-					else:
-						QMessageBox.critical("This is a Windows-only feature.")
+		if self.settings.settings["search_for_updates"] == True:
+			if os.name == "nt":
+				updater = Updater(self.settings)
+				if not updater.jobs[0]["jobId"] == updater.gsettings.settings["job_id"]:
+					reply = QMessageBox.question(self, 'Update', "A new update for XQEMU is available, would you like to update?\nThe size of the update is: " + str(round(updater.release[0]["size"] / 1e+6, 2)) + " MB", QMessageBox.Yes, QMessageBox.No)
+					if reply == QMessageBox.Yes:
+						dir = os.path.dirname(os.path.abspath(updater.gsettings.settings["xqemu_path"]))
+						if os.path.isdir(dir):
+							updater.update()
+						else:
+							QMessageBox.critical(self, "Update", "The selected XQEMU path doesn't exist.")
+			else:
+				QMessageBox.critical("This is a Windows-only feature.")
 
 	def onRunButtonClicked(self):
 		if not self.inst.isRunning:

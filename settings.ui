@@ -143,13 +143,6 @@
          </property>
         </spacer>
        </item>
-       <item>
-        <widget class="QCheckBox" name="searchForUpdates">
-         <property name="text">
-          <string>Search for updates (Windows only)</string>
-         </property>
-        </widget>
-       </item>
       </layout>
      </widget>
      <widget class="QWidget" name="systemTab">
@@ -936,6 +929,20 @@
         </widget>
        </item>
       </layout>
+     </widget>
+     <widget class="QWidget" name="updateTab">
+       <attribute name="title">
+        <string>Update</string>
+       </attribute>
+       <layout class="QHBoxLayout">
+         <item>
+          <widget class="QCheckBox" name="searchForUpdates">
+           <property name="text">
+            <string>Search for XQEMU updates</string>
+           </property>
+          </widget>
+         </item>
+       </layout>
      </widget>
      <widget class="QWidget" name="aboutTab">
       <attribute name="title">
