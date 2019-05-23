@@ -16,8 +16,8 @@ import platform
 SETTINGS_FILE = './settings.json'
 
 # Load UI files
-settings_class, _ = loadUiType('settings.ui')
-mainwindow_class, _ = loadUiType('mainwindow.ui')
+settings_class, _ = loadUiType(os.path.join(os.path.dirname(__file__), 'settings.ui'))
+mainwindow_class, _ = loadUiType(os.path.join(os.path.dirname(__file__), 'mainwindow.ui'))
 
 class SettingsManager(object):
 	def __init__(self):
