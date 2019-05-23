@@ -5,7 +5,7 @@
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QMainWindow, QMessageBox
 from PyQt5.uic import loadUiType
 from PyQt5 import QtCore, QtGui
-from qmp import QEMUMonitorProtocol
+from .qmp import QEMUMonitorProtocol
 import sys
 import os, os.path
 import json
