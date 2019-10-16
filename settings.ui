@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>660</width>
-    <height>352</height>
+    <height>385</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -201,6 +201,39 @@
              </widget>
             </item>
            </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="eepromGroupBox">
+         <property name="title">
+          <string>EEPROM</string>
+         </property>
+         <layout class="QGridLayout" name="eepromGridLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="eepromPathLabel">
+            <property name="text">
+             <string>EEPROM Image:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="eepromPath"/>
+          </item>
+          <item row="0" column="2">
+           <widget class="QPushButton" name="browseEepromPath">
+            <property name="text">
+             <string>Choose...</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="eepromWritebackLabel">
+            <property name="text">
+             <string>EEPROM writeback is not currently supported. Changes to EEPROM will not be saved!</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
