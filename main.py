@@ -2,7 +2,7 @@
 #
 # Simple manager prototype for xqemu
 #
-from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QMainWindow, QMessageBox, QTableWidgetItem, QComboBox
 from PyQt5.uic import loadUiType
 from PyQt5 import QtCore, QtGui
 from qmp import QEMUMonitorProtocol
@@ -49,7 +49,10 @@ class SettingsManager(object):
 			'xmu_3b_path': '',
 			'xmu_4a_path': '',
 			'xmu_4b_path': '',
-			'extra_args': '',
+			"network": {
+				"port_forwarding": []
+			},
+			'extra_args': ''
 		}
 
 	def save(self):
@@ -151,6 +154,34 @@ class SettingsWindow(QDialog, settings_class):
 		self.controller3.currentIndexChanged.connect(updateControllerUi)
 		self.controller4.currentIndexChanged.connect(updateControllerUi)
 		
+		# Create table for network port forwarding
+		self.port_forwarding = self.tableWidget
+		port_forwardings = self.settings.settings['network']['port_forwarding']
+		self.port_forwarding.setRowCount(len(port_forwardings))
+		for i,e in enumerate(port_forwardings):
+
+			# Set name
+			name=QTableWidgetItem(e['name'])
+			self.port_forwarding.setItem(i,0,name)
+
+			# Create a drop-down element for the protocol
+			protocol_selection = QComboBox()
+			protocol_selection.addItems(["TCP", "UDP"])
+			if e['protocol'] == 'tcp':
+				protocol_selection.setCurrentIndex(0)
+			elif e['protocol'] == 'udp':
+				protocol_selection.setCurrentIndex(1)
+			else:
+				protocol_selection.setCurrentIndex(-1)
+			self.port_forwarding.setCellWidget(i,1,protocol_selection)
+
+			# Set ports
+			host_port=QTableWidgetItem(str(e['host_port']))
+			guest_port=QTableWidgetItem(str(e['guest_port']))
+			self.port_forwarding.setItem(i,2,host_port)
+			self.port_forwarding.setItem(i,3,guest_port)
+		self.port_forwarding.setEnabled(False)
+		
 		# Prepare initial UI state
 		updateLaunchCmd()
 		updateControllerUi()
@@ -168,6 +199,13 @@ class Xqemu(object):
 	def __init__(self):
 		self._p = QtCore.QProcess()
 		self._qmp = None
+
+	@staticmethod
+	def generateNetworkArg(settings):
+		args = ['user', 'model=nvnet']
+		for e in settings.settings['network']['port_forwarding']:
+			args += ['hostfwd=%(protocol)s::%(host_port)s-:%(guest_port)s' % e]
+		return ['-nic', ','.join(args)]
 
 	@staticmethod
 	def generateControllerArg(settings):
@@ -256,6 +294,8 @@ class Xqemu(object):
 
 		cmd += Xqemu.generateControllerArg(settings)
 		cmd += Xqemu.generateXmuArg(settings, skipPathChecks)
+
+		cmd += Xqemu.generateNetworkArg(settings)
 
 		if settings.settings['gdb_enabled']:
 			cmd.append('-gdb')
