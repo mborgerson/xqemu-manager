@@ -22,9 +22,10 @@ instance) can be added to this.
 
 ## How to use it
 
-Depends on PyQt5, available with pip. Then run like:
+Install using:
 
 ```
-pip install PyQt5
-python main.py
+pip install --user -U git+https://github.com/xqemu/xqemu-manager.git#egg=xqemu-manager
 ```
+
+Then run `python -m xqemu-manager`
