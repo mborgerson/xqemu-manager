@@ -392,8 +392,8 @@ class MainWindow(QMainWindow, mainwindow_class):
 			if self.inst._p.exitCode() != 0:
 				QMessageBox.critical(self, 'XQEMU quit prematurely!', 'XQEMU quit prematurely.\n\n'
 					'This may be a known issue with this specific game, a problem in XQEMU, or an error in your settings.\n'
-					'Please check your settings for correctness and see the log area for details.\n'
-					'If you need help resolving this problem, make sure to include this log in your error report, '
+					'Please check your settings for correctness and see the XQEMU Messages for details.\n'
+					'If you need help resolving this problem, make sure to include the XQEMU Messages log in your error report, '
 					'along with as many details about how and what you were doing when the error happened.')
 
 	def onRunButtonClicked(self):
