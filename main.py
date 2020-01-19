@@ -433,7 +433,7 @@ class MainWindow(QMainWindow, mainwindow_class):
 		if not self.settings_window.isVisible():
 			self.settings_window.exec_()
 		else:
-			self.settings_window.setFocus()
+			self.settings_window.raise_()
 		self.settings.save()
 
 	def onExitClicked(self):
