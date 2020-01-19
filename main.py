@@ -438,6 +438,12 @@ class MainWindow(QMainWindow, mainwindow_class):
 
 	def onExitClicked(self):
 		self.inst.stop()
+		self.settings_window.close()
+		sys.exit(0)
+
+	def closeEvent(self,event):
+		self.inst.stop()
+		self.settings_window.close()
 		sys.exit(0)
 
 def main():
