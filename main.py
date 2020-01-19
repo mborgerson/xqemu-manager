@@ -353,6 +353,7 @@ class MainWindow(QMainWindow, mainwindow_class):
 		self.inst = Xqemu()
 		self.settings = SettingsManager()
 		self.settings.load()
+		self.settings_window = SettingsWindow(self.settings)
 		self.runButton.setText('Start')
 		self.pauseButton.setText('Pause')
 		self.pauseButton.setEnabled(False)
@@ -429,8 +430,10 @@ class MainWindow(QMainWindow, mainwindow_class):
 		self.inst.restart()
 
 	def onSettingsClicked(self):
-		s = SettingsWindow(self.settings)
-		s.exec_()
+		if not self.settings_window.isVisible():
+			self.settings_window.exec_()
+		else:
+			self.settings_window.setFocus()
 		self.settings.save()
 
 	def onExitClicked(self):
