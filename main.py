@@ -27,6 +27,7 @@ class SettingsManager(object):
 			'xqemu_path': '/path/to/xqemu',
 			'mcpx_path': '/path/to/mcpx.bin',
 			'flash_path': '/path/to/flash.bin',
+			'eeprom_path': '/path/to/eeprom.bin',
 			'hdd_path': '/path/to/hdd.img',
 			'hdd_locked': True,
 			'dvd_present': True,
@@ -115,6 +116,8 @@ class SettingsWindow(QDialog, settings_class):
 		bindFilePicker(self.setMcpxPath, self.mcpxPath)
 		bindTextWidget(self.flashPath, 'flash_path')
 		bindFilePicker(self.setFlashPath, self.flashPath)
+		bindTextWidget(self.eepromPath, 'eeprom_path')
+		bindFilePicker(self.browseEepromPath, self.eepromPath)
 		bindTextWidget(self.hddPath, 'hdd_path')
 		bindFilePicker(self.setHddPath, self.hddPath)
 		bindCheckWidget(self.hddLocked, 'hdd_locked')
@@ -229,6 +232,9 @@ class Xqemu(object):
 		flash_path = settings.settings['flash_path']
 		check_path(flash_path)
 		flash_path_arg = escape_path(flash_path)
+		eeprom_path = settings.settings['eeprom_path']
+		check_path(eeprom_path)
+		eeprom_path_arg = escape_path(eeprom_path)
 		hdd_path = settings.settings['hdd_path']
 		check_path(hdd_path)
 		hdd_path_arg = escape_path(hdd_path)
@@ -246,7 +252,7 @@ class Xqemu(object):
 		# Build qemu launch cmd
 		cmd = [xqemu_path,
 		       '-cpu','pentium3',
-		       '-machine','xbox%(accel_arg)s,bootrom=%(mcpx_path_arg)s%(short_anim_arg)s' % locals(),
+		       '-machine', 'xbox%(accel_arg)s,bootrom=%(mcpx_path_arg)s,eeprom=%(eeprom_path_arg)s%(short_anim_arg)s' % locals(),
 		       '-m', '%(sys_memory)s' % locals(),
 		       '-bios', '%(flash_path_arg)s' % locals(),
 		       '-drive','file=%(hdd_path_arg)s,index=0,media=disk%(hdd_lock_arg)s' % locals(),
